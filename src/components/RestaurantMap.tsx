@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { Restaurant, ClusterData } from '@/types/restaurant';
 
 // More robust fix for default markers in react-leaflet
-if (L.Icon.Default.prototype._getIconUrl) {
+if ((L.Icon.Default.prototype as any)._getIconUrl) {
   delete (L.Icon.Default.prototype as any)._getIconUrl;
 }
 

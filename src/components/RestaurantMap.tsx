@@ -35,21 +35,16 @@ const RestaurantMap: React.FC<RestaurantMapProps> = ({
 
     const lats = filteredRestaurants.map(r => r.lat);
     const lons = filteredRestaurants.map(r => r.lon);
-    
-    const bounds = [
-      [Math.min(...lats), Math.min(...lons)] as [number, number],
-      [Math.max(...lats), Math.max(...lons)] as [number, number]
-    ];
 
     const center = [
       (Math.min(...lats) + Math.max(...lats)) / 2,
       (Math.min(...lons) + Math.max(...lons)) / 2
     ] as [number, number];
 
-    return { center, bounds };
+    return { center };
   };
 
-  const { center, bounds } = getMapBounds();
+  const { center } = getMapBounds();
 
   // Create custom icons for different cuisines
   const getCuisineIcon = (cuisine?: string) => {
@@ -107,6 +102,108 @@ const RestaurantMap: React.FC<RestaurantMapProps> = ({
     });
   };
 
+  const renderRestaurantMarkers = () => {
+    return filteredRestaurants.map((restaurant) => (
+      <Marker
+        key={restaurant.id}
+        position={[restaurant.lat, restaurant.lon]}
+        icon={getCuisineIcon(restaurant.cuisine)}
+      >
+        <Popup>
+          <div className="p-2">
+            <h3 className="font-semibold text-lg">{restaurant.name}</h3>
+            <p className="text-sm text-gray-600">
+              <strong>Cuisine:</strong> {restaurant.cuisine || 'Unknown'}
+            </p>
+            {restaurant.zone && (
+              <p className="text-sm text-gray-600">
+                <strong>Zone:</strong> {restaurant.zone}
+              </p>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              {restaurant.lat.toFixed(4)}, {restaurant.lon.toFixed(4)}
+            </p>
+          </div>
+        </Popup>
+      </Marker>
+    ));
+  };
+
+  const renderClusterMarkers = () => {
+    const clusterElements = [];
+    
+    for (const cluster of clusters) {
+      // Add cluster center
+      clusterElements.push(
+        <Marker
+          key={`cluster-${cluster.id}`}
+          position={cluster.center}
+          icon={getClusterIcon(cluster)}
+        >
+          <Popup>
+            <div className="p-2">
+              <h3 className="font-semibold text-lg">Cluster {cluster.id + 1}</h3>
+              <p className="text-sm text-gray-600">
+                <strong>Restaurants:</strong> {cluster.restaurants.length}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Center: {cluster.center[0].toFixed(4)}, {cluster.center[1].toFixed(4)}
+              </p>
+              <div className="mt-2">
+                <strong className="text-sm">Restaurants in cluster:</strong>
+                <ul className="text-xs mt-1 max-h-20 overflow-y-auto">
+                  {cluster.restaurants.slice(0, 5).map((restaurant) => (
+                    <li key={restaurant.id}>{restaurant.name}</li>
+                  ))}
+                  {cluster.restaurants.length > 5 && (
+                    <li className="text-gray-500">...and {cluster.restaurants.length - 5} more</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+          </Popup>
+        </Marker>
+      );
+
+      // Add cluster members
+      for (const restaurant of cluster.restaurants) {
+        clusterElements.push(
+          <CircleMarker
+            key={`cluster-member-${restaurant.id}`}
+            center={[restaurant.lat, restaurant.lon]}
+            radius={6}
+            pathOptions={{
+              fillColor: cluster.color,
+              color: 'white',
+              weight: 2,
+              opacity: 1,
+              fillOpacity: 0.8
+            }}
+          >
+            <Popup>
+              <div className="p-2">
+                <h3 className="font-semibold text-lg">{restaurant.name}</h3>
+                <p className="text-sm text-gray-600">
+                  <strong>Cuisine:</strong> {restaurant.cuisine || 'Unknown'}
+                </p>
+                <p className="text-sm" style={{ color: cluster.color }}>
+                  <strong>Cluster:</strong> {cluster.id + 1}
+                </p>
+                {restaurant.zone && (
+                  <p className="text-sm text-gray-600">
+                    <strong>Zone:</strong> {restaurant.zone}
+                  </p>
+                )}
+              </div>
+            </Popup>
+          </CircleMarker>
+        );
+      }
+    }
+    
+    return clusterElements;
+  };
+
   return (
     <div className="h-[600px] w-full rounded-lg overflow-hidden shadow-lg">
       <MapContainer
@@ -119,98 +216,7 @@ const RestaurantMap: React.FC<RestaurantMapProps> = ({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
-        {/* Restaurant markers */}
-        {!showClusters && filteredRestaurants.map((restaurant) => (
-          <Marker
-            key={restaurant.id}
-            position={[restaurant.lat, restaurant.lon]}
-            icon={getCuisineIcon(restaurant.cuisine)}
-          >
-            <Popup>
-              <div className="p-2">
-                <h3 className="font-semibold text-lg">{restaurant.name}</h3>
-                <p className="text-sm text-gray-600">
-                  <strong>Cuisine:</strong> {restaurant.cuisine || 'Unknown'}
-                </p>
-                {restaurant.zone && (
-                  <p className="text-sm text-gray-600">
-                    <strong>Zone:</strong> {restaurant.zone}
-                  </p>
-                )}
-                <p className="text-xs text-gray-500 mt-1">
-                  {restaurant.lat.toFixed(4)}, {restaurant.lon.toFixed(4)}
-                </p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-
-        {/* Cluster visualization */}
-        {showClusters && clusters.map((cluster) => (
-          <React.Fragment key={cluster.id}>
-            {/* Cluster center */}
-            <Marker
-              position={cluster.center}
-              icon={getClusterIcon(cluster)}
-            >
-              <Popup>
-                <div className="p-2">
-                  <h3 className="font-semibold text-lg">Cluster {cluster.id + 1}</h3>
-                  <p className="text-sm text-gray-600">
-                    <strong>Restaurants:</strong> {cluster.restaurants.length}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Center: {cluster.center[0].toFixed(4)}, {cluster.center[1].toFixed(4)}
-                  </p>
-                  <div className="mt-2">
-                    <strong className="text-sm">Restaurants in cluster:</strong>
-                    <ul className="text-xs mt-1 max-h-20 overflow-y-auto">
-                      {cluster.restaurants.slice(0, 5).map((restaurant) => (
-                        <li key={restaurant.id}>{restaurant.name}</li>
-                      ))}
-                      {cluster.restaurants.length > 5 && (
-                        <li className="text-gray-500">...and {cluster.restaurants.length - 5} more</li>
-                      )}
-                    </ul>
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-            
-            {/* Cluster members */}
-            {cluster.restaurants.map((restaurant) => (
-              <CircleMarker
-                key={restaurant.id}
-                center={[restaurant.lat, restaurant.lon]}
-                radius={6}
-                pathOptions={{
-                  fillColor: cluster.color,
-                  color: 'white',
-                  weight: 2,
-                  opacity: 1,
-                  fillOpacity: 0.8
-                }}
-              >
-                <Popup>
-                  <div className="p-2">
-                    <h3 className="font-semibold text-lg">{restaurant.name}</h3>
-                    <p className="text-sm text-gray-600">
-                      <strong>Cuisine:</strong> {restaurant.cuisine || 'Unknown'}
-                    </p>
-                    <p className="text-sm" style={{ color: cluster.color }}>
-                      <strong>Cluster:</strong> {cluster.id + 1}
-                    </p>
-                    {restaurant.zone && (
-                      <p className="text-sm text-gray-600">
-                        <strong>Zone:</strong> {restaurant.zone}
-                      </p>
-                    )}
-                  </div>
-                </Popup>
-              </CircleMarker>
-            ))}
-          </React.Fragment>
-        ))}
+        {showClusters ? renderClusterMarkers() : renderRestaurantMarkers()}
       </MapContainer>
     </div>
   );

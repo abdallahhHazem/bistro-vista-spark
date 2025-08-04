@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -27,8 +27,6 @@ const RestaurantMap: React.FC<RestaurantMapProps> = ({
   showHeatmap,
   filteredRestaurants = restaurants 
 }) => {
-  const mapRef = useRef<L.Map | null>(null);
-
   // Calculate map center and bounds
   const getMapBounds = () => {
     if (filteredRestaurants.length === 0) {
@@ -115,7 +113,6 @@ const RestaurantMap: React.FC<RestaurantMapProps> = ({
         center={center}
         zoom={10}
         className="h-full w-full"
-        ref={mapRef}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
